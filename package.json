@@ -1,0 +1,10 @@
+{
+  "name": "tolqyn-relay",
+  "version": "1.0.0",
+  "description": "Сервер связи для демо Tolqyn: передаёт запросы доверенному лицу между телефонами",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED",
+  "private": true
+}
