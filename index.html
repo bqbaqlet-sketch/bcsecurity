@@ -1250,7 +1250,9 @@ const lsGet = k => { try { return JSON.parse(localStorage.getItem(LSK + k) || 'n
 const lsSet = (k, v) => { try { localStorage.setItem(LSK + k, JSON.stringify(v)); } catch (e) { } };
 const LW = [];
 const lsPing = code => LW.forEach(w => { if (w.code === code) w.fn(); });
-const apiBase = () => { try { return String(window.TQ_API || localStorage.getItem('tolqyn.api') || '').replace(/\/+$/, ''); } catch (e) { return ''; } };
+const RELAY_DEFAULT = 'https://bcsecurity.onrender.com';
+// Адрес сервера связи: свой (Настройки → Роль в демо → Сервер связи) или стандартный. Внутри claude.ai стандартный не используется: там работает встроенное хранилище.
+const apiBase = () => { try { let v = String(window.TQ_API || localStorage.getItem('tolqyn.api') || ''); if (v === 'off') return ''; if (!v && !window.claude) v = RELAY_DEFAULT; return v.replace(/\/+$/, ''); } catch (e) { return ''; } };
 const hx = async (m, path, body) => { const r = await fetch(apiBase() + path, { method: m, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); if (!r.ok) throw new Error('http ' + r.status); return r.json(); };
 const TX = {
   link: async (code, data) => apiBase() ? hx('PUT', '/api/link/' + code, data) : (DBX ? DBX.doc('trust/' + code).set(data) : lsSet('link.' + code, data)),
@@ -1265,7 +1267,7 @@ const TX = {
     return () => { const i = LW.indexOf(w); if (i >= 0) LW.splice(i, 1); window.removeEventListener('storage', on); };
   }
 };
-const linkNote = () => (DBX || apiBase() ? '' : `<div class="note" style="margin-bottom:12px">${T2('Связь между устройствами недоступна: войдите в claude.ai. Сейчас работает только между вкладками этого браузера.', 'Құрылғылар арасындағы байланыс жоқ: claude.ai-ге кіріңіз. Қазір тек осы браузердің беттері арасында жұмыс істейді.')}</div>`);
+const linkNote = () => (DBX || apiBase() ? '' : `<div class="note" style="margin-bottom:12px">${T2('Связь между устройствами недоступна. Сейчас работает только между вкладками этого браузера. Укажите сервер связи: Настройки → «Роль в демо».', 'Құрылғылар арасындағы байланыс жоқ. Қазір тек осы браузердің беттері арасында жұмыс істейді. Байланыс серверін көрсетіңіз: Баптаулар → «Демодағы рөл».')}</div>`);
 
 function trWatch() {
   if (UNSUB) { try { UNSUB(); } catch (e) { } UNSUB = null; }
@@ -1340,15 +1342,15 @@ A.role = r => setRole(r);
 /* --- сервер связи для установленного приложения (Capacitor): тот же обмен запросами через HTTP --- */
 const _rs = A.rolesheet;
 A.rolesheet = () => { _rs(); const sb = $('#sbody'); if (sb) sb.insertAdjacentHTML('beforeend', `<div class="btns" style="margin-top:8px"><button class="btn ghost" data-act="apisheet">${T2('Сервер связи', 'Байланыс сервері')}${apiBase() ? ' ✓' : ''}</button></div>`); };
-A.apisheet = () => openSheet(T2('Сервер связи', 'Байланыс сервері'), `<p class="hint">${T2('Нужен, когда приложение установлено на телефонах (не открыто в claude.ai). Запустите server.js и укажите адрес, например https://abc.ngrok.app. На обоих телефонах адрес должен быть одинаковым.', 'Қосымша телефондарға орнатылғанда (claude.ai-де ашылмағанда) қажет. server.js іске қосып, мекенжайды көрсетіңіз. Екі телефонда да мекенжай бірдей болуы керек.')}</p>
+A.apisheet = () => openSheet(T2('Сервер связи', 'Байланыс сервері'), `<p class="hint">${T2('Нужен, когда приложение установлено на телефонах (не открыто в claude.ai). По умолчанию используется https://bcsecurity.onrender.com. Свой адрес нужен только если вы запустили собственный server.js. На обоих телефонах адрес должен быть одинаковым.', 'Қосымша телефондарға орнатылғанда (claude.ai-де ашылмағанда) қажет. server.js іске қосып, мекенжайды көрсетіңіз. Екі телефонда да мекенжай бірдей болуы керек.')}</p>
   <form data-form="apiset" novalidate>${fld({ id: 'url', label: T2('Адрес сервера', 'Сервер мекенжайы'), ph: 'https://…', val: apiBase() })}<button class="btn" type="submit">${T2('Сохранить и проверить', 'Сақтау және тексеру')}</button></form>
-  <div class="btns"><button class="btn ghost" data-act="apiclear">${T2('Отключить сервер', 'Серверді өшіру')}</button></div>`);
+  <div class="btns"><button class="btn ghost" data-act="apiclear">${T2('Вернуть стандартный адрес', 'Стандартты мекенжайды қайтару')}</button></div>`);
 F.apiset = async (d, f) => {
   clearErr(f); const u = String(d.url || '').trim().replace(/\/+$/, ''); if (!/^https?:\/\//.test(u)) return err(f, T2('Адрес должен начинаться с http:// или https://', 'Мекенжай http:// немесе https:// деп басталуы керек'));
   try { localStorage.setItem('tolqyn.api', u); const r = await hx('GET', '/api/ping'); if (!r || !r.ok) throw 0; } catch (e) { try { localStorage.removeItem('tolqyn.api'); } catch (x) { } return err(f, T2('Сервер не отвечает. Проверьте адрес и что server.js запущен.', 'Сервер жауап бермейді. Мекенжайды және server.js іске қосылғанын тексеріңіз.')); }
   trWatch(); toast(T2('Сервер подключён', 'Сервер қосылды')); A.rolesheet();
 };
-A.apiclear = () => { try { localStorage.removeItem('tolqyn.api'); } catch (e) { } trWatch(); toast(T2('Сервер отключён', 'Сервер өшірілді')); A.rolesheet(); };
+A.apiclear = () => { try { localStorage.removeItem('tolqyn.api'); } catch (e) { } trWatch(); toast(T2('Стандартный адрес возвращён', 'Стандартты мекенжай қайтарылды')); A.rolesheet(); };
 
 /* --- сторона доверенного лица --- */
 function renderTrusted() {
