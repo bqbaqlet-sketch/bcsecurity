@@ -2119,6 +2119,17 @@ A.devout = () => { S.devs = S.devs.filter(d => d.id === S.dev); save(); toast(T2
 
 /* --- запуск --- */
 if (ROLE === 'client' && S.sec && S.sec.pin) showLock(); else bump();
+/* ---------- Режим принуждения: банк «отказывает» во всём, что даёт новые деньги ---------- */
+// Отказ выглядит как обычное решение банка, чтобы принуждающий не понял, что включён тихий режим.
+(function () {
+  const refuse = (title) => openSheet(title, `<div class="note" style="border-color:var(--bad)"><b>${T2('В заявке отказано', 'Өтінімнен бас тартылды')}</b><br>${T2('Банк не может одобрить эту операцию по результатам автоматической проверки. Повторите попытку позже или обратитесь в отделение.', 'Банк автоматты тексеру нәтижесі бойынша бұл операцияны мақұлдай алмайды. Кейінірек қайталаңыз немесе бөлімшеге хабарласыңыз.')}</div><div class="btns"><button class="btn ghost" data-act="close">${T2('Понятно', 'Түсінікті')}</button></div>`);
+  const block = (kind, name, title) => { const o = (kind === 'A' ? A : F)[name]; if (!o) return; (kind === 'A' ? A : F)[name] = function () { if (DURESS) { try { clearErr(arguments[1]); } catch (e) { } return refuse(title()); } return o.apply(this, arguments); }; };
+  // кредиты, ипотека, автокредит
+  block('A', 'loan', () => T2('Кредит', 'Несие')); block('F', 'loan', () => T2('Кредит', 'Несие'));
+  // всё, что превращает накопления в доступные деньги
+  block('A', 'depend', () => T2('Депозит', 'Депозит')); block('A', 'depclose', () => T2('Депозит', 'Депозит'));
+  block('A', 'cashout', () => T2('Кешбэк', 'Кэшбэк'));
+})();
 /* ---------- accounts & cards ---------- */
 A.account = id => {
   const a = acc(id), list = S.tx.filter(t => t.acc === id || (!t.acc && id === 'main')).slice(0, 5);
